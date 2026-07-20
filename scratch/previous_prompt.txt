@@ -1,0 +1,162 @@
+<USER_REQUEST>
+You are building ResumeIQ, a premium AI-powered resume analyzer and ATS compatibility checker SaaS web application. Build this to production quality — this must look and feel like a funded startup product (comparable to Linear, Stripe, Vercel, Notion, Framer), not a student project or generic admin template. Avoid any default Bootstrap look.
+
+Tech stack (strict): React (Vite) + HTML5/CSS3/JavaScript on the frontend, styled primarily with Tailwind CSS plus a small custom tokens.css for design-system variables; FastAPI (Python) backend; SQLite database via SQLAlchemy; JWT-based authentication (httpOnly cookie preferred); Google Gemini API for AI analysis (structured JSON output mode); PyMuPDF (fitz) for PDF text extraction (python-docx for .docx); Recharts for all data visualizations; Lucide React for icons.
+
+Design tokens (must use exactly):
+
+
+Primary: #2563EB (hover/active: #1E4FCB)
+Background: #F8FAFC
+Surface/Card: #FFFFFF
+Text Primary: #0F172A
+Text Secondary: #64748B
+Accent/Success: #10B981
+Warning: #F59E0B
+Danger: #EF4444
+Border: #E2E8F0
+Font: Inter (400/500/600/700/800)
+Radii: sm 8px / md 12px / lg 16px / xl 24px / pill 999px
+Shadows: soft and diffused only — 0 1px 2px rgba(15,23,42,0.04) resting, 0 4px 12px rgba(15,23,42,0.06) hover, 0 12px 32px rgba(15,23,42,0.08) elevated
+Generous spacing: 96-120px section padding desktop, 48-64px mobile; 24-32px card padding
+Subtle animations only: 150-300ms eased transitions, fade-up on scroll with stagger, count-up numbers on score reveal, scale/shadow on hover — never flashy or bouncy
+
+
+Build the following pages/screens, each fully responsive (desktop/tablet/mobile) with real empty, loading, error, and success states — not just happy-path mockups:
+
+
+Landing Page (/) — sticky navbar, two-column hero with an animated ATS score gauge mockup, "How It Works" 3-step section, 6-card feature grid, testimonial carousel, sample report preview teaser, pricing teaser, gradient final-CTA band, 4-column footer. Copy: headline "Know your resume's real score 
+<truncated 4490 bytes>
+efore persisting.
+
+Secure the app with bcrypt password hashing, JWT auth (httpOnly cookie), CORS restricted to the frontend origin, rate limiting on login and analysis endpoints, server-side file type/size re-validation (max 5MB, PDF/DOCX only), and never expose the GEMINI_API_KEY to the frontend.
+
+Frontend architecture:
+Use React Query for all server data fetching/caching (resumes, analysis, dashboard summary) with a polling hook for analysis status; React Context for auth/theme state; react-hook-form + Zod/Yup for form validation. Build a small internal component library (Button, Card, Input, Textarea, Modal, Toast, Badge, Chip, Accordion, Tabs, Skeleton, ProgressBar, Avatar, ToggleSwitch) reused consistently across every page — no one-off styles. Build reusable chart components wrapping Recharts: ScoreGauge (RadialBarChart), ScoreTrendChart (LineChart), SubScoreBars (horizontal BarChart), styled with the palette above, light gridlines only, custom-styled tooltips matching the card aesthetic, animated on mount.
+
+Quality bar: every page must have real, designed empty/loading/error/success states (not blank divs); every animation must be subtle and purposeful (150-300ms eased transitions, staggered fade-ups, count-up score reveals); full responsive behavior at desktop/tablet/mobile breakpoints; WCAG AA color contrast and full keyboard accessibility; consistent 8px-based spacing scale and Inter typography throughout. Generate the complete, cohesive frontend UI for all pages listed above plus the FastAPI backend structure, models, services, and endpoints as specified — production-quality code, not a prototype.
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-07-12T16:15:08+05:30.
+</ADDITIONAL_METADATA>
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from None to Claude Opus 4.6 (Thinking). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE><USER_REQUEST>
+Response to open questions and required fixes:
+
+Score band thresholds: Use the original PRD thresholds — red <50, amber 50-79, emerald ≥80. Please make this consistent across ScoreGauge.jsx, scoring_service.py, and any score badges in History/Dashboard. The 75-cutoff mentioned in the chart spec was inconsistent with the rest of the PRD.
+Resume delete behavior: Hard delete only for resumes — when a user deletes a resume, permanently delete the resume row, its file on disk, and its associated analysis (cascade). Soft-delete only applies to the users table on account deletion, not to resumes.
+Guest upload flow: Yes, allow unauthenticated users to upload and analyze one resume from the landing page without signing up first. Track it via guest_session_id as already scoped in the schema. When a guest later signs up or logs in, claim any resume(s) tied to their guest_session_id by attaching them to the new user_id, so their first analysis isn't lost. Guests should see a soft prompt after their one free analysis ("Sign up to save this and track your progress") rather than a hard paywall.
+Docker: Not needed for this capstone. Please proceed with local npm run dev (frontend) + uvicorn main:app --reload (backend) for now. We can add docker-compose.yml later if time permits.
+
+Please proceed with implementation based on the plan as written, with the four corrections above applied
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-07-12T16:20:35+05:30.
+</ADDITIONAL_METADATA><USER_REQUEST>
+
+
+---
+
+**Prompt 1 — Backend Completion Only (Phase 1)**
+
+Complete **Phase 1: Backend Completion** only from the ResumeIQ Implementation Tasks list. Do not start Phase 2 (frontend) or any later phase until I explicitly confirm Phase 1 is done and reviewed.
+
+Build the following, using the existing completed files (`config.py`, `database.py`, `models.py`, `schemas.py`, `auth.py`, `auth_service.py`, `parsing_service.py`, `scoring_service.py`, `ai_service.py`) as the foundation — do not rewrite or duplicate logic that already exists in those files unless a specific fix is needed.
+
+1. **`backend/app/__init__.py`, `backend/app/routers/__init__.py`, `backend/app/services/__init__.py`** — empty init files for package resolution.
+
+2. **`backend/main.py`** — FastAPI entry point:
+   - Instantiate FastAPI app
+   - CORS middleware restricted to `http://localhost:5173`
+   - Include all routers: auth, resumes, analysis, users, dashboard
+   - Create database tables on startup (using existing `database.py`)
+   - Add rate limiting via `slowapi` on `/api/auth/login` and `/api/analysis/run`
+   - Serve the `uploads/` directory as static files
+
+3. **`backend/app/routers/resumes.py`**:
+   - `POST /api/resumes/upload` — multipart upload, server-side validation (PDF/DOCX only, max 5MB), call `ParsingService.parse_resume()`, save file to `uploads/`, create Resume record
+   - `GET /api/resumes` — paginated list of current user's resumes
+   - `GET /api/resumes/:id` — single resume detail
+   - `DELETE /api/resumes/:id` — **hard delete** the resume row, its file on disk, and cascade-delete its associated analysis (confirmed decision — do not soft-delete resumes)
+
+4. **`backend/app/routers/analysis.py`**:
+   - `POST /api/analysis/run` — accept `resume_id` + optional `job_description`, set status to PROCESSING, call `AIService.analyze_resume()` + `ScoringService.calculate_hybrid_score()`, persist results, set status to COMPLETED (or FAILED on error)
+   - `GET /api/analysis/status/:id` — polling endpoint returning current status
+   - `GET /api/analysis/:id` — full analysis result
+   - `GET /api/analysis/:id/pdf` — generate a clean PDF report via `reportlab`
+   - Ensure score bands used anywhere in this router match: **red <50, amber 50-79, emerald ≥80**
+
+5. **`backend/app/routers/users.py`**:
+   - `GET /api/users/me`
+   - `PUT /api/users/me` — update name, target_role, bio, preferences
+   - `PUT /api/users/me/password` — requires old_password
+   - `DELETE /api/users/me` — **soft-delete** only (this is the one place soft-delete applies — mark `is_deleted = true`, anonymize email)
+   - `GET /api/users/me/stats` — total_analyzed, average_score, best_score, member_since
+
+6. **`backend/app/routers/dashboard.py`**:
+   - `GET /api/dashboard/summary` — aggregate: average_score, score_change_delta, total_resumes, score_trend (date+score list), top_skills, top_missing_skills, recommended_roles, recent_analyses, rotating tips
+
+7. **Update `backend/app/routers/auth.py`** — on `POST /api/auth/signup` and `POST /api/auth/login`, if the request includes a `guest_session_id`, claim any resumes tied to that `guest_session_id` by updating their `user_id` to the newly authenticated user.
+
+8. **Update `backend/requirements.txt`** — add `slowapi`, `reportlab`, `email-validator`, `aiofiles`.
+
+Once Phase 1 is complete, stop and give me a summary of what was created/changed so I can review before Phase 2 begins.
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-07-12T16:29:30+05:30.
+</ADDITIONAL_METADATA>
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from Claude Opus 4.6 (Thinking) to Gemini 3.5 Flash (Medium). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE><USER_REQUEST>
+
+
+**Prompt 2 — Frontend Setup + Component Library (Phase 2 & 3)**
+
+Before starting this, please run a quick smoke test on the Phase 1 backend and show me the results: signup a test user, upload a sample PDF via `/api/resumes/upload`, trigger `/api/analysis/run`, poll `/api/analysis/status/:id` until COMPLETED, then fetch `/api/analysis/:id`. Also confirm the SQLite connection in `database.py` uses `connect_args={'check_same_thread': False}` and that the background analysis thread opens its own DB session rather than reusing a request-scoped one.
+
+Once that's confirmed working, proceed with **Phase 2: Frontend Setup** and **Phase 3: Frontend Component Library** only. Do not start Phase 4 or any later phase until I explicitly confirm these are done and reviewed.
+
+**Phase 2 — Frontend Setup:**
+1. Initialize a Vite + React project in `frontend/` (`npx create-vite@latest ./ --template react`).
+2. Install dependencies: `react-router-dom`, `@tanstack/react-query`, `react-hook-form`, `zod`, `@hookform/resolvers`, `recharts`, `lucide-react`, `tailwindcss`, `@tailwindcss/vite`, `clsx`.
+3. Create `frontend/src/tokens.css` with the design tokens as CSS custom properties plus a Tailwind v4 `@theme` block, using exactly these values:
+   - `--color-primary: #2563EB` (hover: `#1E4FCB`)
+   - `--color-bg: #F8FAFC`
+   - `--color-surface: #FFFFFF`
+   - `--color-text: #0F172A`
+   - `--color-text-secondary: #64748B`
+   - `--color-accent: #10B981`
+   - `--color-warning: #F59E0B`
+   - `--color-danger: #EF4444`
+   - `--color-border: #E2E8F0`
+   - `--radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 24px; --radius-pill: 999px`
+   - `--shadow-rest: 0 1px 2px rgba(15,23,42,0.04); --shadow-hover: 0 4px 12px rgba(15,23,42,0.06); --shadow-elevated: 0 12px 32px rgba(15,23,42,0.08)`
+   - Font: Inter (400/500/600/700/800)
+4. Configure `vite.config.js` with the `@tailwindcss/vite` plugin.
+
+**Phase 3 — Frontend Component Library** (under `frontend/src/components/ui/`):
+- `Button.jsx` — primary/secondary/danger/ghost variants, sizes sm/md/lg, loading spinner state, disabled state, hover scale(1.02)+shadow-hover, active scale(0.98)
+- `Card.jsx` — surface card, configurable padding, shadow-rest at rest → shadow-hover on hover
+- `Input.jsx` and `Textarea.jsx` — labeled, inline error message support, focus ring transition
+- `Modal.jsx` — centered overlay, backdrop blur, close on Escape, focus trap
+- `Toast.jsx` + `ToastProvider` — slide-in from top-right, success/error/info variants, auto-dismiss after 4s, manual close
+- `Badge.jsx` — color-coded score bands (red <50, amber 50-79, emerald ≥80)
+- `Chip.jsx` — solid/outline/muted variants for skill pills
+- `Accordion.jsx` — smooth height-animated collapse/expand
+- `Tabs.jsx` — underline indicator switcher
+- `Skeleton.jsx` — pulse-animated line/circle/rect variants
+- `ProgressBar.jsx` — horizontal with percentage label
+- `Avatar.jsx` — circle with initials fallback
+- `ToggleSwitch.jsx` — accessible, keyboard operable
+- `DropZone.jsx` — drag-and-drop file area with drag-over highlight animation
+- `EmptyState.jsx` — illustration + message slot for zero-data screens
+- `ErrorState.jsx` — error message + retry button
+
+Every component must be built as a reusable primitive with no page-specific styling baked in, so later pages compose them consistently. Use the design tokens from `tokens.css` exclusively — no hardcoded hex values anywhere in component code.
+
+Once Phase 2 and 3 are complete, stop and give me a summary of what was created, plus a screenshot or description of how the Button/Card/Chip primitives look, so I can review before Phase 4 begins.
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-07-12T16:33:31+05:30.
+</ADDITIONAL_METADATA>
