@@ -49,12 +49,15 @@ app.add_middleware(
         "http://localhost:5173",
         "http://localhost:5174",
         "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174"
+        "http://127.0.0.1:5174",
+
+        "https://resume-br9oqtksk-vats-ds07s-projects.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # 5. Serve Uploaded Resumes static directory
 # Allows access to raw uploaded resume files if needed by administrators or frontend previews
